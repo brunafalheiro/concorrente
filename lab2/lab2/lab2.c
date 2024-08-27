@@ -10,16 +10,23 @@ float result_produto_interno; // Resultado do produto interno
 
 void *produtoInterno(void *tid) {
   int id = (long int) tid; // Identificador da thread
-  float *local_product = (float *) malloc(sizeof(float)); // Aloca memória para o produto local
+  int chunk_size = vector_size / nThreads; // Tamanho do pedaço para cada thread
+  int start = id * chunk_size; // Índice inicial do pedaço
+  int end = (id == nThreads - 1) ? vector_size : start + chunk_size; // Índice final do pedaço
 
+  float *local_product = (float *) malloc(sizeof(float)); // Aloca memória para o produto local
   if (local_product == NULL) {
     printf("Erro ao alocar memória para local_product\n");
     pthread_exit(NULL);
   }
 
-  *local_product = first_vector[id] * second_vector[id]; // Calcula o produto interno local
-  // printa a thread, os valores dos vetores e o produto interno local
-  printf("Thread %d: %f * %f = %f\n", id, first_vector[id], second_vector[id], *local_product);
+  *local_product = 0.0;
+  for (int i = start; i < end; i++) {
+    *local_product += first_vector[i] * second_vector[i]; // Calcula o produto interno local
+  }
+
+  // printa a thread e o produto interno local
+  printf("Thread %d: Produto interno local = %f\n", id, *local_product);
   pthread_exit((void*) local_product); // Retorna o produto local
 }
 
