@@ -2,32 +2,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define MAX_WEIGHT 20 // Peso máximo para as arestas
+#define MAX_PESO 20 // Peso máximo para as arestas
 
 // Função para gerar um número aleatório dentro de um intervalo
-int random_weight() {
-    return rand() % MAX_WEIGHT + 1;
-}
-
-// Função para adicionar arestas garantindo que o nó inicial tenha caminhos para todos os outros
-void add_edges(FILE *arquivo, int n) {
-    // Garantindo que cada nó tenha pelo menos uma aresta conectada ao nó anterior
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            if (i == j) {
-                fprintf(arquivo, "0 "); // Diagonal 0 (sem laço)
-            } else if (j == 0 && i != 0) {
-                // Conectando todos os nós ao nó 0, exceto o próprio nó 0
-                fprintf(arquivo, "%d ", random_weight());
-            } else if (rand() % 2 == 0) {
-                // Adiciona um peso aleatório nas arestas com 50% de probabilidade
-                fprintf(arquivo, "%d ", random_weight());
-            } else {
-                fprintf(arquivo, "0 "); // Não há aresta
-            }
-        }
-        fprintf(arquivo, "\n");
-    }
+int random_weight(int min, int max) {
+    return rand() % (max - min + 1) + min;
 }
 
 // Função principal
@@ -56,14 +35,47 @@ int main(int argc, char *argv[]) {
     // Inicializando a semente para números aleatórios
     srand(time(NULL));
 
-    // Escrevendo o número de nós no arquivo
+    // Criando a matriz dinâmica
+    int **matriz = (int **)malloc(n * sizeof(int *));
+    for (int i = 0; i < n; i++) {
+        matriz[i] = (int *)calloc(n, sizeof(int)); // Inicializar com 0
+    }
+
+    // Gerando uma árvore geradora mínima (MST)
+    for (int i = 1; i < n; i++) {
+        int pai = rand() % i; // Escolhe um nó já conectado para ligar o próximo nó
+        int peso = random_weight(1, MAX_PESO); // Garante pesos entre 1 e MAX_PESO
+        matriz[i][pai] = peso;
+        matriz[pai][i] = peso; // Grafo não direcionado
+    }
+
+    // Preenchendo as demais arestas aleatórias
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            if (matriz[i][j] == 0) { // Apenas onde não há aresta
+                if (rand() % 2 == 0) { // 50% de probabilidade de criar uma aresta
+                    int peso = random_weight(0, MAX_PESO);
+                    matriz[i][j] = peso;
+                    matriz[j][i] = peso; // Grafo não direcionado
+                }
+            }
+        }
+    }
+
+    // Escrevendo no arquivo
     fprintf(arquivo, "%d\n", n);
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            fprintf(arquivo, "%d ", matriz[i][j]);
+        }
+        fprintf(arquivo, "\n");
+    }
 
-    // Gerando a matriz de adjacência (grafo)
-    // Adiciona arestas que garantem que todos os nós sejam acessíveis a partir do nó 0
-    add_edges(arquivo, n);
-
-    // Fechando o arquivo
+    // Liberando memória e fechando arquivo
+    for (int i = 0; i < n; i++) {
+        free(matriz[i]);
+    }
+    free(matriz);
     fclose(arquivo);
 
     printf("Grafo gerado e salvo em '%s'.\n", nome_arquivo);
