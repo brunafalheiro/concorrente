@@ -20,29 +20,19 @@
 #include <time.h>
 
 #define INFINITY INT_MAX
-#define MAX_NODES 10000       // Defina um limite máximo para os nós
-#define NUM_THREADS 4         // Defina o número de threads usadas
+#define MAX_NODES 100 // Defina um limite máximo para os nós
+#define NUM_THREADS 4 // Defina o número de threads usadas
 
-int D[MAX_NODES];            // Distâncias mínimas
-bool S[MAX_NODES];           // Nós visitados
-int predecessor[MAX_NODES];   // Predecessores para reconstruir caminho
+int D[MAX_NODES][MAX_NODES]; // Distâncias mínimas
+int S[MAX_NODES];
+int predecessor[MAX_NODES]; // Predecessores para reconstruir caminho
+int minGraph[MAX_NODES];
 int n;
-int graph[MAX_NODES][MAX_NODES]; // Matriz de adjacência
-int minGraph[MAX_NODES][MAX_NODES]; // Matriz de adjacência para o grafo mínimo
+int u; // Variável global para o nó com a menor distância
 
 // Mutex, semáforo e barreira para sincronização
-pthread_mutex_t mutexD;
-pthread_mutex_t mutexS;
-sem_t semMinNode;
 pthread_barrier_t barrier;
-
-// Variáveis globais para armazenar o nó mínimo e a distância
-int globalMinDist;
-int globalMinNode;
-
-struct ThreadArgs {
-    int id;
-};
+pthread_mutex_t mutex;
 
 // Função para ler a matriz de adjacências do arquivo de entrada
 void read_graph_from_file(char* filename) {
@@ -60,116 +50,58 @@ void read_graph_from_file(char* filename) {
 
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            fscanf(file, "%d", &graph[i][j]);
+            fscanf(file, "%d", &D[i][j]);
         }
     }
 
     fclose(file);
 }
 
+// Função para encontrar o nó com a menor distância não visitado
+int minDistance() {
+    int min = INFINITY, min_index = -1;
+
+    for (int v = 0; v < n; v++) {
+        if (!minGraph[v] && S[v] <= min) {
+            min = S[v];
+            min_index = v;
+        }
+    }
+
+    return min_index;
+}
+
 // Função que cada thread executa para realizar o relaxamento das distâncias
-void* dijkstra_thread(void* args) {
-    int threadId = ((struct ThreadArgs*)args)->id;
+void* dijkstra_thread(void* arg) {
+    int thread_id = *(int*)arg;
 
-    for (int iter = 0; iter < n; iter++) {
-        int localMinDist = INFINITY;
-        int localMinNode = -1;
-
-        // Cada thread procura o nó não visitado com menor distância em seu subconjunto
-        for (int i = threadId; i < n; i += NUM_THREADS) {
-            pthread_mutex_lock(&mutexS);
-            if (!S[i] && D[i] < localMinDist) {
-                localMinDist = D[i];
-                localMinNode = i;
-            }
-            pthread_mutex_unlock(&mutexS);
-        }
-
-        // Usamos um semáforo para atualizar a distância mínima global entre as threads
-        sem_wait(&semMinNode);
-        if (localMinDist < globalMinDist) {
-            globalMinDist = localMinDist;
-            globalMinNode = localMinNode;
-        }
-        sem_post(&semMinNode);
-
-        pthread_barrier_wait(&barrier);
-
-        // A thread mestre (id 0) marca o nó de menor distância global como visitado
-        if (threadId == 0) {
-            if (globalMinNode == -1) {
-                printf("Nenhum nó acessível restante. Finalizando.\n");
-                globalMinDist = INFINITY;
-                pthread_barrier_wait(&barrier);
-                break;
-            }
-            printf("Iteração %d: nó mínimo global: %d, distância: %d\n", iter, globalMinNode, globalMinDist);
-            S[globalMinNode] = true;
+    for (int count = 0; count < n - 1; count++) {
+        if (thread_id == 0) {
+            pthread_mutex_lock(&mutex);
+            u = minDistance();
+            minGraph[u] = 1;
+            pthread_mutex_unlock(&mutex);
         }
 
         pthread_barrier_wait(&barrier);
 
-        if (globalMinNode == -1) break;
-
-        // Cada thread atualiza as distâncias para os nós adjacentes ao nó global mínimo
-        for (int i = threadId; i < n; i += NUM_THREADS) {
-            pthread_mutex_lock(&mutexS);
-            if (!S[i] && graph[globalMinNode][i] != INFINITY) {
-                int newDist = D[globalMinNode] + graph[globalMinNode][i];
-                pthread_mutex_lock(&mutexD);
-                if (newDist < D[i]) {
-                    D[i] = newDist;
-                    predecessor[i] = globalMinNode;  // Atualiza o predecessor para construir o caminho mínimo
-                    printf("Thread %d: atualizando distância do nó %d para %d (predecessor: %d)\n", threadId, i, newDist, globalMinNode);
-                }
-                pthread_mutex_unlock(&mutexD);
+        for (int v = thread_id; v < n; v += NUM_THREADS) {
+            if (!minGraph[v] && D[u][v] != 0 && S[u] != INFINITY && S[u] + D[u][v] < S[v]) {
+                pthread_mutex_lock(&mutex);
+                S[v] = S[u] + D[u][v];
+                predecessor[v] = u;
+                pthread_mutex_unlock(&mutex);
             }
-            pthread_mutex_unlock(&mutexS);
         }
 
         pthread_barrier_wait(&barrier);
-
-        // A thread mestre redefine as variáveis globais para a próxima iteração
-        if (threadId == 0) {
-            globalMinDist = INFINITY;
-            globalMinNode = -1;
-        }
     }
 
-    pthread_exit(NULL);
-}
-
-// Função para imprimir o caminho mínimo até um destino
-void print_path(int startNode, int endNode) {
-    if (endNode == startNode) {
-        printf("%d ", startNode);
-    } else if (predecessor[endNode] == -1) {
-        printf("Não há caminho de %d até %d\n", startNode, endNode);
-    } else {
-        print_path(startNode, predecessor[endNode]);
-        printf("%d ", endNode);
-    }
-}
-
-// Função para gerar o grafo mínimo baseado nos predecessores
-void generate_min_graph() {
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            minGraph[i][j] = 0; // Inicializa com 0
-        }
-    }
-
-    for (int i = 0; i < n; i++) {
-        if (predecessor[i] != -1) {
-            int pred = predecessor[i];
-            minGraph[pred][i] = graph[pred][i];
-            minGraph[i][pred] = graph[i][pred];  // Considerando que o grafo é não-direcionado
-        }
-    }
+    return NULL;
 }
 
 // Função para salvar a matriz de adjacência do grafo mínimo em um arquivo
-void save_min_graph_to_file(char* filename) {
+void save_min_graph_to_file(char* filename, int minGraph[MAX_NODES][MAX_NODES], int n) {
     FILE* file = fopen(filename, "w");
     if (file == NULL) {
         printf("Erro ao abrir o arquivo para salvar!\n");
@@ -196,31 +128,25 @@ int main(int argc, char* argv[]) {
     // Lê a matriz de adjacências do arquivo de entrada
     read_graph_from_file(argv[1]);
 
-    globalMinDist = INFINITY;
-    globalMinNode = -1;
-
     // Inicializa as distâncias e os predecessores
     for (int i = 0; i < n; i++) {
-        D[i] = INFINITY;
-        S[i] = false;
+        S[i] = INFINITY;
+        minGraph[i] = 0;
         predecessor[i] = -1;
     }
 
-    int startNode = 0;
-    D[startNode] = 0;
+    S[0] = 0; // Suponha que o nó de origem seja 0
 
-    // Inicializa semáforo, mutexes e barreira
-    sem_init(&semMinNode, 0, 1);
-    pthread_mutex_init(&mutexD, NULL);
-    pthread_mutex_init(&mutexS, NULL);
+    pthread_t threads[NUM_THREADS];
+    int thread_ids[NUM_THREADS];
+
     pthread_barrier_init(&barrier, NULL, NUM_THREADS);
+    pthread_mutex_init(&mutex, NULL);
 
     // Cria as threads e inicia a execução do algoritmo
-    pthread_t threads[NUM_THREADS];
-    struct ThreadArgs threadArgs[NUM_THREADS];
     for (int i = 0; i < NUM_THREADS; i++) {
-        threadArgs[i].id = i;
-        pthread_create(&threads[i], NULL, dijkstra_thread, (void*)&threadArgs[i]);
+        thread_ids[i] = i;
+        pthread_create(&threads[i], NULL, dijkstra_thread, &thread_ids[i]);
     }
 
     // Aguarda o término das threads
@@ -228,23 +154,27 @@ int main(int argc, char* argv[]) {
         pthread_join(threads[i], NULL);
     }
 
-    // Libera os recursos usados
-    sem_destroy(&semMinNode);
-    pthread_mutex_destroy(&mutexD);
-    pthread_mutex_destroy(&mutexS);
     pthread_barrier_destroy(&barrier);
+    pthread_mutex_destroy(&mutex);
 
-    // Exibe as distâncias mínimas e os caminhos
-    printf("Distâncias mínimas do nó %d:\n", startNode);
+    // Cria a matriz de adjacências do caminho mínimo
+    int shortestPathMatrix[MAX_NODES][MAX_NODES];
     for (int i = 0; i < n; i++) {
-        printf("Distância até o nó %d: %d | Caminho: ", i, D[i]);
-        print_path(startNode, i);
-        printf("\n");
+        for (int j = 0; j < n; j++) {
+            if (i == j) {
+                shortestPathMatrix[i][j] = 0;
+            } else if (predecessor[j] == i) {
+                shortestPathMatrix[i][j] = D[i][j];
+            } else {
+                shortestPathMatrix[i][j] = 0;
+            }
+        }
     }
 
-    // Gera o grafo mínimo e salva a matriz de adjacência em um arquivo
-    generate_min_graph();
-    save_min_graph_to_file(argv[2]);
+    // Salva a matriz de adjacências do caminho mínimo no arquivo de saída
+    save_min_graph_to_file(argv[2], shortestPathMatrix, n);
+
+    printf("Matriz de caminhos mínimos salva no arquivo '%s'.\n", argv[2]);
 
     return 0;
 }
