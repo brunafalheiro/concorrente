@@ -20,13 +20,12 @@
 #include <time.h>
 
 #define INFINITY INT_MAX
-#define MAX_NODES 100 // Defina um limite máximo para os nós
-#define NUM_THREADS 4 // Defina o número de threads usadas
+#define NUM_THREADS 4
 
-int D[MAX_NODES][MAX_NODES]; // Distâncias mínimas
-int S[MAX_NODES];
-int predecessor[MAX_NODES]; // Predecessores para reconstruir caminho
-int minGraph[MAX_NODES];
+int **D; // Distâncias mínimas
+int *S;
+int *predecessor; // Predecessores para reconstruir caminho
+int *minGraph;
 int n;
 int u; // Variável global para o nó com a menor distância
 
@@ -42,11 +41,17 @@ void read_graph_from_file(char* filename) {
         exit(1);
     }
 
-    fscanf(file, "%d", &n);  // Lê o número de nós
-    if (n > MAX_NODES) {
-        printf("Número de nós excede o limite máximo!\n");
-        exit(1);
+    // Lê o número de nós
+    fscanf(file, "%d", &n);
+
+    // Aloca memória dinamicamente para as matrizes e vetores
+    D = (int**)malloc(n * sizeof(int*));
+    for (int i = 0; i < n; i++) {
+        D[i] = (int*)malloc(n * sizeof(int));
     }
+    S = (int*)malloc(n * sizeof(int));
+    predecessor = (int*)malloc(n * sizeof(int));
+    minGraph = (int*)malloc(n * sizeof(int));
 
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
@@ -101,7 +106,7 @@ void* dijkstra_thread(void* arg) {
 }
 
 // Função para salvar a matriz de adjacência do grafo mínimo em um arquivo
-void save_min_graph_to_file(char* filename, int minGraph[MAX_NODES][MAX_NODES], int n) {
+void save_min_graph_to_file(char* filename, int **minGraph, int n) {
     FILE* file = fopen(filename, "w");
     if (file == NULL) {
         printf("Erro ao abrir o arquivo para salvar!\n");
@@ -124,6 +129,9 @@ int main(int argc, char* argv[]) {
         printf("Uso: %s <arquivo_entrada> <arquivo_saida>\n", argv[0]);
         return 1;
     }
+
+    // Inicia o contador de tempo
+    clock_t start_time = clock();
 
     // Lê a matriz de adjacências do arquivo de entrada
     read_graph_from_file(argv[1]);
@@ -158,7 +166,11 @@ int main(int argc, char* argv[]) {
     pthread_mutex_destroy(&mutex);
 
     // Cria a matriz de adjacências do caminho mínimo
-    int shortestPathMatrix[MAX_NODES][MAX_NODES];
+    int **shortestPathMatrix = (int**)malloc(n * sizeof(int*));
+    for (int i = 0; i < n; i++) {
+        shortestPathMatrix[i] = (int*)malloc(n * sizeof(int));
+    }
+
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             if (i == j) {
@@ -174,7 +186,23 @@ int main(int argc, char* argv[]) {
     // Salva a matriz de adjacências do caminho mínimo no arquivo de saída
     save_min_graph_to_file(argv[2], shortestPathMatrix, n);
 
+    // Para o contador de tempo
+    clock_t end_time = clock();
+    double time_taken = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+    printf("Tempo de execução: %f segundos\n", time_taken);
+
     printf("Matriz de caminhos mínimos salva no arquivo '%s'.\n", argv[2]);
+
+    // Libera a memória alocada
+    for (int i = 0; i < n; i++) {
+        free(D[i]);
+        free(shortestPathMatrix[i]);
+    }
+    free(D);
+    free(shortestPathMatrix);
+    free(S);
+    free(predecessor);
+    free(minGraph);
 
     return 0;
 }
