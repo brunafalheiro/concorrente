@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-
-#define MAX_NODES 100
+#include <time.h>
 
 // Função para encontrar o nó com a menor distância não visitado
 int minDistance(int dist[], int sptSet[], int n) {
@@ -19,8 +18,8 @@ int minDistance(int dist[], int sptSet[], int n) {
 }
 
 // Função que implementa o algoritmo de Dijkstra
-void dijkstra(int graph[MAX_NODES][MAX_NODES], int n, int src, int dist[], int parent[]) {
-    int sptSet[n]; // Conjunto de vértices para os quais o caminho mais curto é conhecido
+void dijkstra(int **graph, int n, int src, int dist[], int parent[]) {
+    int *sptSet = (int *)malloc(n * sizeof(int)); // Conjunto de vértices para os quais o caminho mais curto é conhecido
 
     // Inicializa todos os valores
     for (int i = 0; i < n; i++) {
@@ -44,10 +43,12 @@ void dijkstra(int graph[MAX_NODES][MAX_NODES], int n, int src, int dist[], int p
             }
         }
     }
+
+    free(sptSet);
 }
 
 // Função para salvar a matriz de adjacências no arquivo
-void saveMatrixToFile(char *filename, int matrix[MAX_NODES][MAX_NODES], int n) {
+void saveMatrixToFile(char *filename, int **matrix, int n) {
     FILE *file = fopen(filename, "w");
     if (file == NULL) {
         printf("Erro ao abrir o arquivo para salvar a matriz!\n");
@@ -67,10 +68,14 @@ void saveMatrixToFile(char *filename, int matrix[MAX_NODES][MAX_NODES], int n) {
 
 // Função principal
 int main(int argc, char *argv[]) {
+    printf("iniciou\n");
     if (argc != 3) {
         printf("Uso: %s <arquivo_entrada> <arquivo_saida>\n", argv[0]);
         return 1;
     }
+
+    // Inicia o contador de tempo
+    clock_t start_time = clock();
 
     FILE *inputFile = fopen(argv[1], "r");
     if (inputFile == NULL) {
@@ -80,7 +85,12 @@ int main(int argc, char *argv[]) {
 
     int n;
     fscanf(inputFile, "%d", &n); // Lê o número de nós
-    int graph[MAX_NODES][MAX_NODES];
+
+    // Aloca memória para a matriz de adjacências
+    int **graph = (int **)malloc(n * sizeof(int *));
+    for (int i = 0; i < n; i++) {
+        graph[i] = (int *)malloc(n * sizeof(int));
+    }
 
     // Lê a matriz de adjacências
     for (int i = 0; i < n; i++) {
@@ -88,17 +98,24 @@ int main(int argc, char *argv[]) {
             fscanf(inputFile, "%d", &graph[i][j]);
         }
     }
+    printf("leu\n");
 
     fclose(inputFile);
 
-    int dist[MAX_NODES], parent[MAX_NODES];
+    int *dist = (int *)malloc(n * sizeof(int));
+    int *parent = (int *)malloc(n * sizeof(int));
 
     // Suponha que o nó de origem seja 0
     int src = 0;
     dijkstra(graph, n, src, dist, parent);
+    printf("executou dijkstra\n");
 
     // Cria a matriz de adjacências do caminho mínimo
-    int shortestPathMatrix[MAX_NODES][MAX_NODES];
+    int **shortestPathMatrix = (int **)malloc(n * sizeof(int *));
+    for (int i = 0; i < n; i++) {
+        shortestPathMatrix[i] = (int *)malloc(n * sizeof(int));
+    }
+
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             if (i == j) {
@@ -113,8 +130,23 @@ int main(int argc, char *argv[]) {
 
     // Salva a matriz de adjacências do caminho mínimo no arquivo de saída
     saveMatrixToFile(argv[2], shortestPathMatrix, n);
+    printf("salvou a matriz\n");
+
+    clock_t end_time = clock();
+    double time_taken = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+    printf("Tempo de execução: %f segundos\n", time_taken);
 
     printf("Matriz de caminhos mínimos salva no arquivo '%s'.\n", argv[2]);
+
+    // Libera a memória alocada
+    for (int i = 0; i < n; i++) {
+        free(graph[i]);
+        free(shortestPathMatrix[i]);
+    }
+    free(graph);
+    free(shortestPathMatrix);
+    free(dist);
+    free(parent);
 
     return 0;
 }
