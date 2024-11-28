@@ -211,7 +211,7 @@ int main(int argc, char* argv[]) {
     clock_t end_time = clock();
     double time_taken = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
 
-    printf("Execução concorrente finalizada. Tempo de execução: %f\n\n", time_taken);
+    printf("Execução concorrente com %d threads finalizada. Tempo de execução: %f\n", NUM_THREADS, time_taken);
 
     for (int i = 0; i < n; i++) {
         free(D[i]);
