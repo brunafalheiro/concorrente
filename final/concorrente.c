@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <stdatomic.h>
 
 #define INFINITY INT_MAX
 
@@ -87,38 +86,32 @@ int minDistance() {
 
 void* dijkstra(void* arg) {
     int thread_id = *(int*)arg;
-    int local_u;
 
     // Itera para encontrar a distância mínima de todos os nós
     for (int count = 0; count < n - 1; count++) {
-        // Cada thread encontra localmente o nó com a menor distância e comunica a thread 0
+        // Só a thread 0 encontra o nó com a menor distância
         if (thread_id == 0) {
-            local_u = minDistance(); // Encontra o nó com a menor distância
-            if (local_u != -1) {
-                atomic_store(&u, local_u); // Atualiza a variável atômica u com o nó encontrado
-                minGraph[local_u] = 1; // Marca o nó como processado
+            u = minDistance(); // Encontra o nó com a menor distância
+            if (u != -1) {
+                minGraph[u] = 1; // Marca o nó como processado
             }
         }
 
         // Sincroniza todas as threads para garantir que a thread 0 atualizou a variável u
         pthread_barrier_wait(&barrier);
 
-        // Cada thread carrega o valor atualizado de u
-        pthread_mutex_lock(&mutex);
-        local_u = u;
-        pthread_mutex_unlock(&mutex);
-
         // Se não há mais nós a processar, as threads encerram
-        if (local_u == -1) { break; }
+        if (u == -1) { break; }
 
-        // Realiza o relaxamento das distâncias para os nós restantes
+        // Cada thread realiza o relaxamento das distâncias para seus nós designados
         for (int v = thread_id; v < n; v += NUM_THREADS) {
-            if (!minGraph[v] && D[local_u][v] != 0 && S[local_u] != INFINITY && S[local_u] + D[local_u][v] < S[v]) {
-                S[v] = S[local_u] + D[local_u][v]; // Atualiza a distância de v
-                predecessor[v] = local_u; // Atualiza o predecessor de v
+            if (!minGraph[v] && D[u][v] != 0 && S[u] != INFINITY && S[u] + D[u][v] < S[v]) {
+                S[v] = S[u] + D[u][v]; // Atualiza a distância de v
+                predecessor[v] = u; // Atualiza o predecessor de v
             }
         }
 
+        // Sincroniza novamente antes da próxima iteração
         pthread_barrier_wait(&barrier);
     }
 
