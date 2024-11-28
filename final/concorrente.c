@@ -20,7 +20,6 @@
 #include <time.h>
 
 #define INFINITY INT_MAX
-#define NUM_THREADS 4
 
 int **D; // Distâncias mínimas
 int *S;
@@ -28,6 +27,7 @@ int *predecessor; // Predecessores para reconstruir caminho
 int *minGraph;
 int n;
 int u; // Variável global para o nó com a menor distância
+int NUM_THREADS = 4;
 
 // Mutex, semáforo e barreira para sincronização
 pthread_barrier_t barrier;
@@ -125,13 +125,15 @@ void save_min_graph_to_file(char* filename, int **minGraph, int n) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 3) {
-        printf("Uso: %s <arquivo_entrada> <arquivo_saida>\n", argv[0]);
+    if (argc != 4) {
+        printf("Uso: %s <arquivo_entrada> <arquivo_saida> <num_threads>\n", argv[0]);
         return 1;
     }
 
     // Inicia o contador de tempo
     clock_t start_time = clock();
+
+    NUM_THREADS = atoi(argv[3]);
 
     // Lê a matriz de adjacências do arquivo de entrada
     read_graph_from_file(argv[1]);
@@ -189,9 +191,8 @@ int main(int argc, char* argv[]) {
     // Para o contador de tempo
     clock_t end_time = clock();
     double time_taken = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
-    printf("Tempo de execução: %f segundos\n", time_taken);
 
-    printf("Matriz de caminhos mínimos salva no arquivo '%s'.\n", argv[2]);
+    printf("Execução concorrente finalizada. Tempo de execução: %f\n\n", time_taken);
 
     // Libera a memória alocada
     for (int i = 0; i < n; i++) {

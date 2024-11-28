@@ -68,7 +68,6 @@ void saveMatrixToFile(char *filename, int **matrix, int n) {
 
 // Função principal
 int main(int argc, char *argv[]) {
-    printf("iniciou\n");
     if (argc != 3) {
         printf("Uso: %s <arquivo_entrada> <arquivo_saida>\n", argv[0]);
         return 1;
@@ -98,7 +97,6 @@ int main(int argc, char *argv[]) {
             fscanf(inputFile, "%d", &graph[i][j]);
         }
     }
-    printf("leu\n");
 
     fclose(inputFile);
 
@@ -108,7 +106,6 @@ int main(int argc, char *argv[]) {
     // Suponha que o nó de origem seja 0
     int src = 0;
     dijkstra(graph, n, src, dist, parent);
-    printf("executou dijkstra\n");
 
     // Cria a matriz de adjacências do caminho mínimo
     int **shortestPathMatrix = (int **)malloc(n * sizeof(int *));
@@ -130,13 +127,11 @@ int main(int argc, char *argv[]) {
 
     // Salva a matriz de adjacências do caminho mínimo no arquivo de saída
     saveMatrixToFile(argv[2], shortestPathMatrix, n);
-    printf("salvou a matriz\n");
 
     clock_t end_time = clock();
     double time_taken = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
-    printf("Tempo de execução: %f segundos\n", time_taken);
 
-    printf("Matriz de caminhos mínimos salva no arquivo '%s'.\n", argv[2]);
+    printf("Execução sequencial finalizada. Tempo de execução: %f\n", time_taken);
 
     // Libera a memória alocada
     for (int i = 0; i < n; i++) {
