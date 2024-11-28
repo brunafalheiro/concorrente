@@ -22,7 +22,9 @@ CONC_FILE="conc${NODES}"
 
 # Compara os resultados
 if diff $SEQ_FILE $CONC_FILE > /dev/null; then
-    echo "\nTeste de corretude completo. Sem falhas."
+    echo ''
+    echo "Teste de corretude completo. Sem falhas."
 else
-    echo "\nERROR."
+    echo ''
+    echo "ERROR."
 fi
