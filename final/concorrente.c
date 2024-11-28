@@ -1,5 +1,5 @@
 /*
- * Autores: Bruna Falheiro e Júlio Bularmaqui
+ * Autores: Bruna Falheiro e Júlio Burlamaqui
  *
  * Implementação concorrente do algoritmo de Dijkstra utilizando threads.
  * O objetivo é calcular as distâncias mínimas de um nó inicial para todos os outros em um grafo,
