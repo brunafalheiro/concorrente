@@ -16,6 +16,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    clock_t start, end;
+    double cpu_time_used;
+
+    start = clock(); // Início da medição do tempo
+
     int n = atoi(argv[1]); // Quantidade de nós
     char *nome_arquivo = argv[2]; // Nome do arquivo de saída
 
@@ -79,6 +84,11 @@ int main(int argc, char *argv[]) {
     fclose(arquivo);
 
     printf("Grafo gerado e salvo em '%s'.\n", nome_arquivo);
+
+    end = clock(); // Fim da medição do tempo
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+
+    printf("Tempo de execução da geração da lista: %f segundos\n", cpu_time_used);
 
     return 0;
 }
