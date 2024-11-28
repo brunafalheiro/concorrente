@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
     end = clock(); // Fim da medição do tempo
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
 
-    printf("Tempo de execução da geração da lista: %f segundos\n\n", cpu_time_used);
+    printf("Tempo de execução da geração da matriz: %f segundos\n\n", cpu_time_used);
 
     return 0;
 }
