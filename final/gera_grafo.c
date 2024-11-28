@@ -11,8 +11,8 @@ int random_weight(int min, int max) {
 
 // Função principal
 int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        printf("Uso: %s <quantidade_de_nos> <nome_do_arquivo>\n", argv[0]);
+    if (argc != 4) {
+        printf("Uso: %s <quantidade_de_nos> <probabilidade_de_conectar_aresta> <nome_do_arquivo>\n", argv[0]);
         return 1;
     }
 
@@ -22,7 +22,8 @@ int main(int argc, char *argv[]) {
     start = clock(); // Início da medição do tempo
 
     int n = atoi(argv[1]); // Quantidade de nós
-    char *nome_arquivo = argv[2]; // Nome do arquivo de saída
+    int prob = atoi(argv[2]); // Probabilidade de conectar uma aresta
+    char *nome_arquivo = argv[3]; // Nome do arquivo de saída
 
     // Verificar se a quantidade de nós é válida
     if (n <= 0) {
@@ -58,7 +59,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < n; i++) {
         for (int j = i + 1; j < n; j++) {
             if (matriz[i][j] == 0) { // Apenas onde não há aresta
-                if (rand() % 2 == 0) { // 50% de probabilidade de criar uma aresta
+                if (rand() % 100 < prob) { // Probabilidade de criar uma aresta
                     int peso = random_weight(0, MAX_PESO);
                     matriz[i][j] = peso;
                     matriz[j][i] = peso; // Grafo não direcionado
