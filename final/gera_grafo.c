@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
         matriz[i] = (int *)calloc(n, sizeof(int)); // Inicializar com 0
     }
 
-    // Gerando uma árvore geradora mínima (MST)
+    // Gerando uma árvore geradora
     for (int i = 1; i < n; i++) {
         int pai = rand() % i; // Escolhe um nó já conectado para ligar o próximo nó
         int peso = random_weight(1, MAX_PESO); // Garante pesos entre 1 e MAX_PESO
